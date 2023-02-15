@@ -82,7 +82,7 @@ function getComTargetCode (target: 'react', namespace: string, comProps: any, co
     }
 
   } else {
-    comlibs.comAray.forEach((comlib) => {
+    comlibs.comAray.forEach((comlib: any) => {
       if (comlib.namespace) {
         if (comlib.namespace === namespace) {
           // console.log(comlib)
@@ -122,7 +122,7 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     const slotsProxy = new Proxy(slots || {}, {
       get (target, slotId: string) {
         return {
-          render({ wrap, itemWrap }) {
+          render({ wrap, itemWrap }: { wrap: any; itemWrap: any }) {
             const slot = slots[slotId]
             if (slot) {
               return slotContent(slot, coms, { wrap, itemWrap })
@@ -219,7 +219,7 @@ function comWrapper (content: string, comProps: any) {
   `
 }
 
-function getObjectStr (obj) {
+function getObjectStr (obj: any) {
   return JSON.stringify(obj)
 }
 
