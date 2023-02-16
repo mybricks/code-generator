@@ -122,10 +122,10 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     const slotsProxy = new Proxy(slots || {}, {
       get (target, slotId: string) {
         return {
-          render({ wrap, itemWrap }: { wrap: any; itemWrap: any }) {
+          render(renderParams: { wrap: any; itemWrap: any }) {
             const slot = slots[slotId]
             if (slot) {
-              return slotContent(slot, coms, { wrap, itemWrap })
+              return slotContent(slot, coms, renderParams)
             }
           }
         }
@@ -149,6 +149,8 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
 
     if (typeof params?.itemWrap === 'function') {
       jsx = params.itemWrap({ id: comItem.id, jsx })
+    } else {
+      jsx = `<div>${jsx}</div>`
     }
 
     wrapComAry.push({
