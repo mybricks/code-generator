@@ -48,9 +48,7 @@ function generateCode (options: {
 
   const jsxScript = `export default function () {
     return (
-      <div>
-        ${slotContentScript}
-      </div>
+      ${slotContentScript}
     )
   }
   `
@@ -112,20 +110,22 @@ function getComTargetCode (target: 'react', namespace: string, comProps: any, co
  * @returns 
  */
 function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWrap: any }) {
+  const { comAry, style }  = slot
   let result = ''
   const wrapComAry: { id: string, jsx: string, style: any }[] = []
 
-  slot.comAry.forEach(comItem => {
+  comAry.forEach(comItem => {
     const { slots } = comItem
     const comInfo = coms[comItem.id]
     const comModel = comInfo.model
+
     const slotsProxy = new Proxy(slots || {}, {
       get (target, slotId: string) {
         return {
           render(renderParams: { wrap: any; itemWrap: any }) {
-            const slot = slots[slotId]
-            if (slot) {
-              return slotContent(slot, coms, renderParams)
+            const slotNext = slots[slotId]
+            if (slotNext) {
+              return slotContent(slotNext, coms, renderParams)
             }
           }
         }
@@ -141,17 +141,16 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     const toCodeResult = getComTargetCode('react', comItem.def.namespace, comProps)
 
     let jsx 
+    // console.log(comProps)
     if (toCodeResult?.jsx) {
       jsx = comWrapper(toCodeResult.jsx, comProps)
     } else {
-      jsx = `<div>${comInfo.def.namespace} Todo...</div>`
+      jsx = comWrapper(`${comInfo.def.namespace} Todo...`, comProps)
     }
 
     if (typeof params?.itemWrap === 'function') {
       jsx = params.itemWrap({ id: comItem.id, jsx })
-    } else {
-      jsx = `<div>${jsx}</div>`
-    }
+    } 
 
     wrapComAry.push({
       style: comModel.style,
@@ -165,6 +164,9 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
 
   if (typeof params?.wrap === 'function') {
     result = params.wrap(wrapComAry)
+  } else {
+    // console.log(style)
+    result = `<div style={${getSlotStyle(style)}}>${result}</div>`
   }
 
   return result
@@ -229,15 +231,72 @@ function getComDeps () {
  * @returns 
  */
 function comWrapper (content: string, comProps: any) {
+  const style = {
+    display: comProps.style.display,
+    position: comProps.style.position || "relative",
+    ...getSizeStyle(comProps.style)
+  }
+
+  if (['fixed', 'absolute'].includes(comProps.style.position)) {
+    if (comProps.style.position === "fixed" && comProps.style.fixedY === "bottom") {
+      style.bottom = comProps.style.bottom;
+    } else if (comProps.style.top) {
+      style.top = comProps.style.top;
+    }
+    if (comProps.style.position === "fixed" && comProps.style.fixedX === "right") {
+      style.right = comProps.style.right;
+    } else if (comProps.style.left) {
+      style.left = comProps.style.left;
+    }
+    style.zIndex = 1000;
+  }
+
   return `
-    <div style={${getObjectStr(comProps.style)}}>
+    <div style={${getObjectStr(style)}}>
       ${content}
     </div>
   `
 }
 
+function getSlotStyle (slotStyle: object) {
+  const style = {
+    width: '100%',
+    height: '100%',
+    position: 'relative'
+  }
+  
+  // console.log(slotStyle)
+
+  return getObjectStr(style)
+}
+
+function getSizeStyle(style: any) {
+  const sizeStyle: any = {}
+  const {width, height} = style
+
+  if (!width) {
+    sizeStyle.width = "100%"
+  } else if (isNumber(width)) {
+    sizeStyle.width = width + "px"
+  } else if (width) {
+    sizeStyle.width = width
+  }
+
+  if (isNumber(height)) {
+    sizeStyle.height = height + "px"
+  } else if (height) {
+    sizeStyle.height = height
+  }
+
+  return sizeStyle
+}
+
 function getObjectStr (obj: any) {
   return JSON.stringify(obj)
+}
+
+function isNumber(num: any) {
+  return typeof num === "number" && !isNaN(num)
 }
 
 export default {
