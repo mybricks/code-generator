@@ -176,27 +176,36 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
  */
 function getComDeps () {
   const deps: { [key: string]: string[] } = {}
+  const defaultExp: { [key: string]: string } = {}
   let result = `import React from "react"`
 
   comMaps.forEach(item => {
     if (item) {
-      item?.imports?.forEach((dep: { form: string, coms: string[] }) => {
-        if (deps[dep.form]) { // Todo 有覆盖风险
-          deps[dep.form] = [...new Set([...deps[dep.form], ...dep.coms])]
+      item?.imports?.forEach((dep: { from: string, coms: string[], default: string }) => {
+        if (deps[dep.from]) { // Todo 有覆盖风险
+          deps[dep.from] = [...new Set([...deps[dep.from], ...dep.coms])]
         } else {
-          deps[dep.form] = [...dep.coms]
+          deps[dep.from] = [...dep.coms]
         }
+
+        if (dep.default) {
+          defaultExp[dep.from] = dep.default
+        }
+
       })
     }
-    
   })
 
   Object.keys(deps).forEach(libKey => {
     const coms = deps[libKey]
     let depsStr = ''
 
-    if (coms.length > 0) {
+    if (Array.isArray(coms) && coms.length > 0) {
       depsStr = `import { ${coms.join()} } from "${libKey}"`
+    }
+     
+    if (defaultExp[libKey]) {
+      depsStr += depsStr ? '\n' : '' + `import ${defaultExp[libKey]} from "${libKey}"`
     } else {
       depsStr = `import "${libKey}" `
     }
