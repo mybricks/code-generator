@@ -181,7 +181,11 @@ function getComDeps () {
 
   comMaps.forEach(item => {
     if (item) {
-      item?.imports?.forEach((dep: { from: string, coms: string[], default?: string }) => {
+      item?.imports?.forEach((dep: { from: string, coms?: string[], default?: string }) => {
+        if (!dep.coms) {
+          dep.coms = []
+        }
+
         if (deps[dep.from]) { // Todo 有覆盖风险
           deps[dep.from] = [...new Set([...deps[dep.from], ...dep.coms])]
         } else {
