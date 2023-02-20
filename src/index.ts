@@ -109,10 +109,11 @@ function getComTargetCode (target: 'react', namespace: string, comProps: any, co
  * @param params 
  * @returns 
  */
-function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWrap: any }) {
+function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWrap: any, style: any }) {
   const { comAry, style }  = slot
   let result = ''
   const wrapComAry: { id: string, jsx: string, style: any }[] = []
+  const slotStyle = params?.style || style
 
   comAry.forEach(comItem => {
     const { slots } = comItem
@@ -122,7 +123,7 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     const slotsProxy = new Proxy(slots || {}, {
       get (target, slotId: string) {
         return {
-          render(renderParams: { wrap: any; itemWrap: any }) {
+          render(renderParams: { wrap: any; itemWrap: any, style: any }) {
             const slotNext = slots[slotId]
             if (slotNext) {
               return slotContent(slotNext, coms, renderParams)
@@ -165,8 +166,7 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
   if (typeof params?.wrap === 'function') {
     result = params.wrap(wrapComAry)
   } else {
-    // console.log(style)
-    result = `<div style={${getSlotStyle(style)}}>${result}</div>`
+    result = slotWrapper({ slotStyle, paramsStyle: params?.style, content: result })
   }
 
   return result
@@ -234,7 +234,8 @@ function comWrapper (content: string, comProps: any) {
   const style = {
     display: comProps.style.display,
     position: comProps.style.position || "relative",
-    ...getSizeStyle(comProps.style)
+    ...getSizeStyle(comProps.style),
+    ...getMarginStyle(comProps.style)
   }
 
   if (['fixed', 'absolute'].includes(comProps.style.position)) {
@@ -258,14 +259,87 @@ function comWrapper (content: string, comProps: any) {
   `
 }
 
-function getSlotStyle (slotStyle: object) {
-  const style = {
+/**
+ * @description 插槽根节点
+ */
+function slotWrapper ({ slotStyle, paramsStyle, content }: { slotStyle: any, paramsStyle: any, content: string }) {
+
+  return  `<div style={${getSlotStyle(slotStyle, !!paramsStyle)}}>${content}</div>`
+}
+
+function getSlotStyle (slotStyle: { layout: string, alignItems: string, justifyContent: string, [key: string]: string }, hasParamsStyle: boolean) {
+  const {
+    paddingLeft,
+    paddingTop,
+    paddingRight,
+    paddingBottom,
+    background,
+    ...otherStyle
+  } = slotStyle;
+
+  let style: { [key: string]: string } = {
     width: '100%',
     height: '100%',
-    position: 'relative'
+    position: 'relative',
+    paddingLeft,
+    paddingTop,
+    paddingRight,
+    paddingBottom,
+    background
   }
-  
-  // console.log(slotStyle)
+
+  const justifyContentStyles: { [key: string]: string }  = {
+    ['FLEX-START']: 'flex-start',
+    CENTER: 'center',
+    ['FLEX-END']: 'flex-end',
+    ['SPACE-AROUND']: 'space-around',
+    ['SPACE-BETWEEN']: 'space-between'
+  }
+
+  const alignItemsStyles: { [key: string]: string }  = {
+    ['FLEX-START']: 'flex-start',
+    CENTER: 'center',
+    ['FLEX-END']: 'flex-end'
+  }
+
+  const layoutStyles: { [key: string]: any } = {
+    ['flex-column']: {
+      display: 'flex',
+      flexDirection: 'column'
+    },
+    ['flex-row']: {
+      display: 'flex',
+      flexDirection: 'row'
+    }
+  }
+
+  if (slotStyle) {
+    const { layout, alignItems, justifyContent } = slotStyle
+    if (layout) {
+      if (layoutStyles[layout.toLowerCase()]) {
+        style = {
+          ...style,
+          ...layoutStyles[layout.toLowerCase()]
+        }
+      }
+    }
+
+    if (alignItems) {
+      if (alignItemsStyles[alignItems.toUpperCase()]) {
+        style['alignItems'] = alignItemsStyles[alignItems.toUpperCase()]
+      }
+    }
+
+    if (justifyContent) {
+      if (justifyContentStyles[justifyContent.toUpperCase()]) {
+        style['justifyContent'] = justifyContentStyles[justifyContent.toUpperCase()]
+      }
+    }
+  }
+
+  if (hasParamsStyle) {
+    style = Object.assign(style, otherStyle)
+  }
 
   return getObjectStr(style)
 }
@@ -289,6 +363,40 @@ function getSizeStyle(style: any) {
   }
 
   return sizeStyle
+}
+
+function getMarginStyle(style: any) {
+  const marginStyle: any = {}
+  const {
+    width,
+    marginTop,
+    marginLeft,
+    marginRight,
+    marginBottom
+  } = style
+
+  if (isNumber(marginTop)) {
+    marginStyle.marginTop = marginTop + "px"
+  }
+  if (isNumber(marginLeft)) {
+    if (typeof width === "number" || marginLeft < 0) {
+      marginStyle.marginLeft = marginLeft + "px"
+    } else {
+      marginStyle.paddingLeft = marginLeft + "px"
+    }
+  }
+  if (isNumber(marginRight)) {
+    if (typeof width === "number" || marginRight < 0) {
+      marginStyle.marginRight = marginRight + "px"
+    } else {
+      marginStyle.paddingRight = marginRight + "px"
+    }
+  }
+  if (isNumber(marginBottom)) {
+    marginStyle.marginBottom = marginBottom + "px"
+  }
+
+  return marginStyle
 }
 
 function getObjectStr (obj: any) {
