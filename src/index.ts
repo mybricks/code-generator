@@ -1,4 +1,8 @@
 import codePrettier from './prettier'
+import { getObjectStr, isNumber } from './utils'
+import slotWrapper from './slotWrapper'
+
+
 interface ComItem {
   def: { namespace: string, rtType?: string, version: string }
   id: string
@@ -139,10 +143,16 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
 
     const toCodeResult = getComTargetCode('react', comItem.def.namespace, comProps)
 
-    let jsx 
-    // console.log(comProps)
+    let jsx
+
     if (toCodeResult?.jsx) {
-      jsx = comWrapper(toCodeResult.jsx, comProps)
+      if (comInfo.def.rtType === 'popup') {
+        // 对 popup 类型进行特殊处理
+        jsx = toCodeResult.jsx
+      } else {
+        jsx = comWrapper(toCodeResult.jsx, comProps)
+      }
+      
     } else {
       jsx = comWrapper(`${comInfo.def.namespace} Todo...`, comProps)
     }
@@ -210,7 +220,7 @@ function getComDeps () {
     }
      
     if (defaultExp[libKey]) {
-      depsStr += (depsStr ? '\n' : '' )+ `import ${defaultExp[libKey]} from "${libKey}"`
+      depsStr += (depsStr ? '\n' : '' ) + `import ${defaultExp[libKey]} from "${libKey}"`
     }
     
     if (!defaultExp[libKey] && coms.length <= 0 ) {
@@ -256,91 +266,6 @@ function comWrapper (content: string, comProps: any) {
       ${content}
     </div>
   `
-}
-
-/**
- * @description 插槽根节点
- */
-function slotWrapper ({ slotStyle, paramsStyle, content }: { slotStyle: any, paramsStyle: any, content: string }) {
-
-  return  `<div style={${getSlotStyle(slotStyle, !!paramsStyle)}}>${content}</div>`
-}
-
-function getSlotStyle (slotStyle: { layout: string, alignItems: string, justifyContent: string, [key: string]: string }, hasParamsStyle: boolean) {
-  const {
-    paddingLeft,
-    paddingTop,
-    paddingRight,
-    paddingBottom,
-    background,
-    ...otherStyle
-  } = slotStyle;
-
-  let style: { [key: string]: string } = {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-    paddingLeft,
-    paddingTop,
-    paddingRight,
-    paddingBottom,
-    background
-  }
-
-  const justifyContentStyles: { [key: string]: string }  = {
-    ['FLEX-START']: 'flex-start',
-    CENTER: 'center',
-    ['FLEX-END']: 'flex-end',
-    ['SPACE-AROUND']: 'space-around',
-    ['SPACE-BETWEEN']: 'space-between'
-  }
-
-  const alignItemsStyles: { [key: string]: string }  = {
-    ['FLEX-START']: 'flex-start',
-    CENTER: 'center',
-    ['FLEX-END']: 'flex-end'
-  }
-
-  const layoutStyles: { [key: string]: any } = {
-    ['flex-column']: {
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    ['flex-row']: {
-      display: 'flex',
-      flexDirection: 'row'
-    }
-  }
-
-  if (slotStyle) {
-    const { layout, alignItems, justifyContent } = slotStyle
-    if (layout) {
-      if (layoutStyles[layout.toLowerCase()]) {
-        style = {
-          ...style,
-          ...layoutStyles[layout.toLowerCase()]
-        }
-      }
-    }
-
-    if (alignItems) {
-      if (alignItemsStyles[alignItems.toUpperCase()]) {
-        style['alignItems'] = alignItemsStyles[alignItems.toUpperCase()]
-      }
-    }
-
-    if (justifyContent) {
-      if (justifyContentStyles[justifyContent.toUpperCase()]) {
-        style['justifyContent'] = justifyContentStyles[justifyContent.toUpperCase()]
-      }
-    }
-  }
-
-  if (hasParamsStyle) {
-    style = Object.assign(style, otherStyle)
-  }
-
-  return getObjectStr(style)
 }
 
 function getSizeStyle(style: any) {
@@ -396,14 +321,6 @@ function getMarginStyle(style: any) {
   }
 
   return marginStyle
-}
-
-function getObjectStr (obj: any) {
-  return JSON.stringify(obj)
-}
-
-function isNumber(num: any) {
-  return typeof num === "number" && !isNaN(num)
 }
 
 export default {
