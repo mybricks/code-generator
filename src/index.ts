@@ -40,8 +40,6 @@ function generateCode (options: {
 
   const { slot, coms } = toJson
 
-  // console.log(toJson)
-
   const slotContentScript = slotContent(slot, coms)
 
   const importsScript = getComDeps()
@@ -166,7 +164,8 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
   if (typeof params?.wrap === 'function') {
     result = params.wrap(wrapComAry)
   } else {
-    result = slotWrapper({ slotStyle, paramsStyle: params?.style, content: result })
+    // 此处做了与 render-web 不同的处理，对于插槽内没有组件的情况，不渲染插槽的wrapper层
+    result = result ? slotWrapper({ slotStyle, paramsStyle: params?.style, content: result }) : ''
   }
 
   return result
