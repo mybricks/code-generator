@@ -40,13 +40,13 @@ function generateCode (options: {
   target?: 'react',
   toJson: ToJson
 }) {
-  const { toJson } = options
+  const { toJson, target } = options
 
   const { slot, coms } = toJson
 
   const slotContentScript = slotContent(slot, coms)
 
-  const importsScript = getComDeps()
+  const importsScript = getComDeps(target)
 
   const jsxScript = `export default function () {
     return (
@@ -185,10 +185,16 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
  * @description 获取组件依赖信息
  * @returns 
  */
-function getComDeps () {
-  const deps: { [key: string]: string[] } = {}
-  const defaultExp: { [key: string]: string } = {}
-  let result = `import React from "react"`
+function getComDeps (target?: string) {
+  const deps: Record<string, string[]> = {}
+  const defaultExp: Record<string, string> = {}
+
+  const targetDefaultImport: Record<string, string> = {
+    react: `import React from "react"`,
+    vue: 'todo'
+  }
+
+  let result = targetDefaultImport[target || 'react']
 
   comMaps.forEach(item => {
     if (item) {
@@ -197,7 +203,7 @@ function getComDeps () {
           dep.coms = []
         }
 
-        if (deps[dep.from]) { // Todo 有覆盖风险
+        if (deps[dep.from]) {
           deps[dep.from] = [...new Set([...deps[dep.from], ...dep.coms])]
         } else {
           deps[dep.from] = [...dep.coms]
