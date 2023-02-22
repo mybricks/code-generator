@@ -203,6 +203,13 @@ function getComDeps (target?: string) {
           dep.coms = []
         }
 
+        // debug 检测异常数据
+        dep.coms.forEach(com => {
+          if (!com) {
+            console.warn(`[debug] 依赖数据异常 com: ${com}`)
+          }
+        })
+
         if (deps[dep.from]) {
           deps[dep.from] = [...new Set([...deps[dep.from], ...dep.coms])]
         } else {
