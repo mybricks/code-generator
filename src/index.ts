@@ -64,46 +64,6 @@ function generateCode (options: {
   return codePrettier(result)
 }
 
-function getComTargetCode (target: 'react', namespace: string, comProps: any, comAray?: any) {
-  /**
-   * 获取组件库信息，暂时从 window 上获取
-   */
-  const comlibs = comAray || window[COM_LIBS][0]
-  let toCodeResult: any
-
-  // 找到对应组件的模版，执行后拿到出码字符串。
-  // Todo 暂时忽略 version
-  if (comMaps.get(namespace)){
-    const toCodeFn = comToCodeFnMaps.get(namespace)
-    toCodeResult = comMaps.get(namespace)
-
-    if (toCodeFn) {
-      toCodeResult = { ...toCodeResult, ...toCodeFn(comProps) } 
-    }
-
-  } else {
-    comlibs.comAray.forEach((comlib: any) => {
-      if (comlib.namespace) {
-        if (comlib.namespace === namespace) {
-          // console.log(comlib)
-          const toCodeFn = comlib.target?.[targetType[target]]
-          if (toCodeFn) {
-            toCodeResult = toCodeFn(comProps)
-            comToCodeFnMaps.set(comlib.namespace, toCodeFn)
-          }
-
-          comMaps.set(comlib.namespace, toCodeResult)
-        }
-      } else {
-        if (comlib.comAray) {
-          toCodeResult = getComTargetCode(target, namespace, comProps, comlib)
-        }
-      }
-    })
-  }
-
-  return toCodeResult
-}
 /**
  * @description 递归获取 slot 内容
  * @param slot 
@@ -141,7 +101,7 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
       slots: slotsProxy
     }
 
-    const toCodeResult = getComTargetCode('react', comItem.def.namespace, comProps)
+    const toCodeResult = getComTargetCode('react', comItem, comProps)
 
     let jsx
 
@@ -180,6 +140,59 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
 
   return result
 }
+
+
+function getComTargetCode (target: 'react', comItem: any, comProps: any, comAray?: any) {
+
+  const namespace = comItem.def.namespace
+  let toCodeResult: any
+  let toCodeFn = comToCodeFnMaps.get(namespace)
+
+  // 找到对应组件的模版，执行后拿到出码字符串。
+  // Todo 暂时忽略 version
+  if (toCodeFn){
+    toCodeResult = toCodeFn(comProps)
+    comMaps.set(comItem.id, toCodeResult)
+  } else {
+    toCodeResult = getComTargetCodeForComlibs(target, comItem, comProps)
+  }
+
+  return toCodeResult
+}
+
+function getComTargetCodeForComlibs (target: 'react', comItem: any, comProps: any, comAray?: any) {
+  /**
+   * 获取组件库信息，暂时从 window 上获取
+   */
+  const comlibs = comAray || window[COM_LIBS][0]
+  const namespace = comItem.def.namespace
+  let toCodeResult: any
+
+  for (const comlib of comlibs.comAray) {
+    if (comlib.namespace) {
+      if (comlib.namespace === namespace) {
+        const toCodeFn = comlib.target?.[targetType[target]]
+
+        if (toCodeFn) {
+          toCodeResult = toCodeFn(comProps)
+          comToCodeFnMaps.set(comlib.namespace, toCodeFn)
+          comMaps.set(comItem.id, toCodeResult)
+          break
+        }
+      }
+    } else {
+      if (comlib.comAray) {
+        const res = getComTargetCodeForComlibs(target, comItem, comProps, comlib)
+        if (!toCodeResult) {
+          toCodeResult = res
+        }
+      }
+    }
+  }
+
+  return toCodeResult
+}
+
 
 /**
  * @description 获取组件依赖信息
