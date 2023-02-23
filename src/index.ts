@@ -103,6 +103,8 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
 
     const toCodeResult = getComTargetCode('react', comItem, comProps)
 
+    console.log(toCodeResult)
+
     let jsx
 
     if (toCodeResult?.jsx) {
@@ -212,6 +214,8 @@ function getComDeps (target?: string) {
   comMaps.forEach(item => {
     if (item) {
       item?.imports?.forEach((dep: { from: string, coms?: string[], default?: string }) => {
+        if (!dep) return
+
         if (!dep.coms) {
           dep.coms = []
         }
