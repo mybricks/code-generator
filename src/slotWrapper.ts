@@ -1,11 +1,15 @@
 import { getObjectStr } from './utils'
+import { tagTranslate } from './tagTranslate'
+import { TargetType }  from './index'
 
 /**
  * @description 插槽根节点
  */
-export default function slotWrapper ({ slotStyle, paramsStyle, content }: { slotStyle: any, paramsStyle: any, content: string }) {
+export default function slotWrapper ({ target, slotStyle, paramsStyle, content }: { target: TargetType, slotStyle: any, paramsStyle: any, content: string }) {
 
-  return  `<div style={${getSlotStyle(slotStyle, !!paramsStyle)}}>${content}</div>`
+  const divTagName = tagTranslate[target].div
+
+  return  `<${divTagName} style={${getSlotStyle(slotStyle, !!paramsStyle)}}>${content}</${divTagName}>`
 }
 
 function getSlotStyle (slotStyle: { layout: string, alignItems: string, justifyContent: string, [key: string]: string }, hasParamsStyle: boolean) {

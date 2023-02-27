@@ -1,6 +1,7 @@
 import codePrettier from './prettier'
 import { getObjectStr, isNumber } from './utils'
 import slotWrapper from './slotWrapper'
+import { tagTranslate } from './tagTranslate'
 
 
 interface ComItem {
@@ -27,24 +28,33 @@ interface ToJson {
   slot: ToJsonSlot
 }
 
+export type TargetType = 'react' | 'weapp'
+
 const COM_LIBS = '__comlibs_edit_'
 
-const targetType = {
-  react: 'toReact'
+
+const targetTypeMap = {
+  react: 'toReact',
+  weapp: 'toWeapp'
 }
+const targetList = ['react', 'weapp']
 
 const comMaps = new Map()
 const comToCodeFnMaps = new Map()
 
 function generateCode (options: {
-  target?: 'react',
+  target?: TargetType,
   toJson: ToJson
 }) {
-  const { toJson, target } = options
+  const { toJson, target = 'react' } = options
+
+  if (!targetList.includes(target)) {
+    throw new Error(`Invalid generate code target of ${target} !`)
+  }
 
   const { slot, coms } = toJson
 
-  const slotContentScript = slotContent(slot, coms)
+  const slotContentScript = slotContent(target, slot, coms)
 
   const importsScript = getComDeps(target)
 
@@ -71,7 +81,7 @@ function generateCode (options: {
  * @param params 
  * @returns 
  */
-function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWrap: any, style: any }) {
+function slotContent (target: TargetType, slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWrap: any, style: any }) {
   const { comAry, style }  = slot
   let result = ''
   const wrapComAry: { id: string, jsx: string, style: any }[] = []
@@ -83,12 +93,12 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     const comModel = comInfo.model
 
     const slotsProxy = new Proxy(slots || {}, {
-      get (target, slotId: string) {
+      get (targetValue, slotId: string) {
         return {
           render(renderParams: { wrap: any; itemWrap: any, style: any }) {
             const slotNext = slots[slotId]
             if (slotNext) {
-              return slotContent(slotNext, coms, renderParams)
+              return slotContent(target, slotNext, coms, renderParams)
             }
           }
         }
@@ -101,9 +111,9 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
       slots: slotsProxy
     }
 
-    const toCodeResult = getComTargetCode('react', comItem, comProps)
+    const toCodeResult = getComTargetCode(target, comItem, comProps)
 
-    console.log(toCodeResult)
+    // console.log(toCodeResult)
 
     let jsx
 
@@ -112,11 +122,11 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
         // 对 popup 类型进行特殊处理
         jsx = toCodeResult.jsx
       } else {
-        jsx = comWrapper(toCodeResult.jsx, comProps)
+        jsx = comWrapper(target, toCodeResult.jsx, comProps)
       }
       
     } else {
-      jsx = comWrapper(`${comInfo.def.namespace} Todo...`, comProps)
+      jsx = comWrapper(target, `${comInfo.def.namespace} Todo...`, comProps)
     }
 
     if (typeof params?.itemWrap === 'function') {
@@ -137,14 +147,14 @@ function slotContent (slot: ToJsonSlot, coms: any, params?: { wrap: any, itemWra
     result = params.wrap(wrapComAry)
   } else {
     // 此处做了与 render-web 不同的处理，对于插槽内没有组件的情况，不渲染插槽的wrapper层
-    result = result ? slotWrapper({ slotStyle, paramsStyle: params?.style, content: result }) : ''
+    result = result ? slotWrapper({ target, slotStyle, paramsStyle: params?.style, content: result }) : ''
   }
 
   return result
 }
 
 
-function getComTargetCode (target: 'react', comItem: any, comProps: any, comAray?: any) {
+function getComTargetCode (target: TargetType, comItem: any, comProps: any, comAray?: any) {
 
   const namespace = comItem.def.namespace
   let toCodeResult: any
@@ -162,7 +172,7 @@ function getComTargetCode (target: 'react', comItem: any, comProps: any, comAray
   return toCodeResult
 }
 
-function getComTargetCodeForComlibs (target: 'react', comItem: any, comProps: any, comAray?: any) {
+function getComTargetCodeForComlibs (target: TargetType, comItem: any, comProps: any, comAray?: any) {
   /**
    * 获取组件库信息，暂时从 window 上获取
    */
@@ -173,7 +183,7 @@ function getComTargetCodeForComlibs (target: 'react', comItem: any, comProps: an
   for (const comlib of comlibs.comAray) {
     if (comlib.namespace) {
       if (comlib.namespace === namespace) {
-        const toCodeFn = comlib.target?.[targetType[target]]
+        const toCodeFn = comlib.target?.[targetTypeMap[target]]
 
         if (toCodeFn) {
           toCodeResult = toCodeFn(comProps)
@@ -206,7 +216,8 @@ function getComDeps (target?: string) {
 
   const targetDefaultImport: Record<string, string> = {
     react: `import React from "react"`,
-    vue: 'todo'
+    vue: 'todo',
+    weapp: ''
   }
 
   let result = targetDefaultImport[target || 'react']
@@ -269,7 +280,7 @@ function getComDeps (target?: string) {
  * @param comProps 
  * @returns 
  */
-function comWrapper (content: string, comProps: any) {
+function comWrapper (target: TargetType, content: string, comProps: any) {
   const style = {
     display: comProps.style.display,
     position: comProps.style.position || "relative",
@@ -291,10 +302,12 @@ function comWrapper (content: string, comProps: any) {
     style.zIndex = 1000;
   }
 
+  const divTagName = tagTranslate[target].div
+
   return `
-    <div style={${getObjectStr(style)}}>
+    <${divTagName} style={${getObjectStr(style)}}>
       ${content}
-    </div>
+    </${divTagName}>
   `
 }
 
