@@ -1,6 +1,6 @@
 {
   "name": "@mybricks/code-generator",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "author": "mybricks",
   "license": "",
   "main": "lib/index.js",
