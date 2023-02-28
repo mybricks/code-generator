@@ -80,6 +80,29 @@ function getSlotStyle (slotStyle: { layout: string, alignItems: string, justifyC
         style['justifyContent'] = justifyContentStyles[justifyContent.toUpperCase()]
       }
     }
+
+
+    if (typeof background === 'object') {
+      const {
+        background: bg,
+        backgroundImage,
+        backgroundColor,
+        backgroundRepeat,
+        backgroundSize
+      } = background;
+
+      style.backgroundRepeat = backgroundRepeat
+      style.backgroundSize = backgroundSize
+
+      if (bg) {
+        style.background = bg
+      } else {
+        style.backgroundImage = backgroundImage
+        style.backgroundColor = backgroundColor
+      }
+    } else {
+      style.background = background
+    }
   }
 
   if (hasParamsStyle) {
