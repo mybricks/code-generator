@@ -59,9 +59,7 @@ function generateCode (options: {
   const importsScript = getComDeps(target)
 
   const jsxScript = `export default function () {
-    return (
-      ${slotContentScript}
-    )
+    return ${ slotContentScript ? `(${slotContentScript})` : 'null' }
   }
   `
 
